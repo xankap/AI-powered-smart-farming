@@ -23,11 +23,22 @@
 # gunicorn==21.2.0
 # numpy==1.26.4
 
+# Flask==3.0.3
+# ultralytics==8.3.0
+# torch==2.1.0 --index-url https://download.pytorch.org/whl/cpu
+# torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cpu
+# Pillow==10.0.1
+# gunicorn==21.2.0
+# numpy==1.26.4
+# opencv-python-headless
+
+
 Flask==3.0.3
-ultralytics==8.3.0
-torch==2.1.0 --index-url https://download.pytorch.org/whl/cpu
-torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cpu
+ultralytics==8.0.196
+torch==2.5.1
+torchvision==0.20.1
 Pillow==10.0.1
 gunicorn==21.2.0
 numpy==1.26.4
 opencv-python-headless
+--extra-index-url https://download.pytorch.org/whl/cpu
