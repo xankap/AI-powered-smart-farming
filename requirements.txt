@@ -31,9 +31,12 @@
 
 Flask==3.0.3
 ultralytics==8.0.196
-torch==2.5.1
-torchvision==0.21.0 --extra-index-url https://download.pytorch.org/whl/cpugit add
+torch==2.5.1+cpu
+torchvision==0.21.0+cpu
 Pillow==10.0.1
 gunicorn==21.2.0
 numpy==1.26.4
 opencv-python-headless
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
