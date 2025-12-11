@@ -40,7 +40,7 @@ opencv-python-headless==4.8.0.74
 fastapi==0.109.0
 uvicorn==0.29.0
 onnxruntime==1.18.0
-python-multipart==0.0.6   ← ADD THIS
+python-multipart==0.0.6   
 
 
 
