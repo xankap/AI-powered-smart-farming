@@ -1,55 +1,79 @@
-from fastapi import FastAPI, UploadFile, File
+from flask import Flask, request, jsonify
 import onnxruntime as ort
 import numpy as np
 from PIL import Image
-import io
+import io, uuid, threading
 
-app = FastAPI()
+app = Flask(__name__)
 
-# -------------------------
-# LOAD ONNX MODEL
-# -------------------------
-MODEL_PATH = "best.onnx"
-
-session = ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"])
+# Load model once
+session = ort.InferenceSession("best.onnx", providers=["CPUExecutionProvider"])
 input_name = session.get_inputs()[0].name
 
+# Store results
+jobs = {}
 
-# -------------------------
-# PREDICT ENDPOINT
-# -------------------------
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+# -------------------------------
+# BACKGROUND INFERENCE FUNCTION
+# -------------------------------
+def run_inference(job_id, img_bytes):
     try:
-        # Read the uploaded file
-        img_bytes = await file.read()
-
-        # Load image
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         img = img.resize((640, 640))
 
-        # Convert to array
         img_array = np.array(img).astype(np.float32)
-
-        # Convert RGB → BGR (YOLO ONNX expects BGR)
-        img_array = img_array[:, :, ::-1]
-
-        # Normalize
-        img_array /= 255.0
-
-        # CHW format
+        img_array = img_array[:, :, ::-1] / 255.0
         img_array = np.transpose(img_array, (2, 0, 1))
-
-        # Add batch dim
         img_array = np.expand_dims(img_array, axis=0)
 
-        # Run inference
         outputs = session.run(None, {input_name: img_array})
 
-        # Convert outputs to python lists
-        predictions = [out.tolist() for out in outputs]
+        # Example: simple ripe logic
+        confidence = float(np.max(outputs[0]))
+        ripe = confidence > 0.6
 
-        return {"success": True, "predictions": predictions}
+        jobs[job_id] = {
+            "status": "done",
+            "ripe": ripe,
+            "confidence": confidence
+        }
 
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        jobs[job_id] = {
+            "status": "error",
+            "error": str(e)
+        }
+
+# -------------------------------
+# IMAGE UPLOAD ENDPOINT
+# -------------------------------
+@app.route("/upload", methods=["POST"])
+def upload():
+    file = request.files["image"]
+    img_bytes = file.read()
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"status": "processing"}
+
+    # Run inference in background
+    threading.Thread(
+        target=run_inference,
+        args=(job_id, img_bytes)
+    ).start()
+
+    # INSTANT ACK to ESP32
+    return jsonify({
+        "status": "received",
+        "job_id": job_id
+    })
+
+# -------------------------------
+# RESULT ENDPOINT
+# -------------------------------
+@app.route("/result/<job_id>", methods=["GET"])
+def result(job_id):
+    return jsonify(jobs.get(job_id, {"status": "not_found"}))
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
